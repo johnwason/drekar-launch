@@ -582,6 +582,7 @@ class SimpleGui:
     def __init__(self, name, core, exit_event):
         self.name = name
         self.core = core
+        self.log_dir = core.log_dir
         self.exit_event = exit_event
         self.root = None
 
@@ -590,18 +591,21 @@ class SimpleGui:
 
         root = tk.Tk()
         root.title(self.name + " Simple Launch")
+        root.geometry("600x200")
 
         root.protocol("WM_DELETE_WINDOW", self._set_exit_event)
 
         # Create a window that displays status of tasks and has a "Stop All" button
         # that sets the exit_event
 
-        label = tk.Label(root, fg = "black", justify=tk.LEFT)
-        label.grid(row=0, column=0)        
-        label.config(text="test")
+        label = tk.Label(root, fg = "black", justify=tk.LEFT, wraplength=600)
+        # Fill window with label
+        label.grid(row=0, column=0, sticky=tk.NSEW)
+        # label.grid(row=0, column=0)        
+        label.config(text=f"Running Launch:\n{self.name}\n\nLog Directory:\n{self.log_dir}\n\nPress \"Stop All\" to exit\n")
 
-        button = tk.Button(root, text="Stop All", command=self._set_exit_event)
-        button.grid(row=1, column=0)        
+        button = tk.Button(root, text="Stop All", command=self._set_exit_event, width=50, height=2)
+        button.grid(row=1, column=0, sticky=tk.S)  
 
         root.bind("<<exit>>", self._close)
 
@@ -660,9 +664,9 @@ def main():
         exit_event = asyncio.Event()
         core = SimpleCore(parser_results.name, task_launch, exit_event, log_dir, not parser_results.quiet, loop)
         gui = None
-        # if parser_results.gui:
-        #     gui = SimpleGui(name, core, exit_event)
-        #     gui.start()
+        if parser_results.gui:
+            gui = SimpleGui(name, core, exit_event)
+            gui.start()
         loop.call_soon(lambda: core.start_all())
         def ctrl_c_pressed(signum, frame):
             loop.call_soon_threadsafe(lambda: exit_event.set())
