@@ -48,6 +48,7 @@ class PyriProcess:
         self._keep_going = True
         self._process = None
         self._term_attempts = 0
+        self.screen = parent.screen
     
     async def run(self):
         s = self.task_launch
@@ -84,6 +85,8 @@ class PyriProcess:
                                 stderr_log.write(stderr_line.decode("utf-8")) 
                                 stderr_log.flush()
                                 stderr_read_task = asyncio.ensure_future(self._process.stderr.readline())
+                                if self.screen:
+                                    print(f"[{self.task_launch.name}]  " + stderr_line.decode("utf-8"),end="",file=sys.stderr)
                         if stdout_read_task in done:
                             stdout_line = await stdout_read_task
                             if len(stdout_line) == 0:
@@ -92,6 +95,8 @@ class PyriProcess:
                                 stdout_log.write(stdout_line.decode("utf-8"))
                                 stdout_log.flush()
                                 stdout_read_task = asyncio.ensure_future(self._process.stdout.readline())
+                                if self.screen:
+                                    print(f"[{self.task_launch.name}]  " + stdout_line.decode("utf-8"),end="",file=sys.stdout)
                     await self._process.wait()
                     self.parent.process_state_changed(s.name,ProcessState.STOPPED)
                 except:
@@ -133,7 +138,7 @@ class PyriProcess:
             traceback.print_exc()
 
 class PyriCore:
-    def __init__(self, name, task_launches, exit_event, log_dir, loop):
+    def __init__(self, name, task_launches, exit_event, log_dir, screen, loop):
         self.name = name
         self.task_launches = dict()
         self._closed = False
@@ -141,6 +146,7 @@ class PyriCore:
             self.task_launches[s.name] = s
         self.log_dir = log_dir
         self._loop = loop
+        self.screen=screen
 
         self._subprocesses = dict()
         self._lock = threading.RLock()
@@ -574,6 +580,7 @@ def main():
         parser.add_argument("--config", type=str, default="simple-launch.yaml", help="Configuration file")
         parser.add_argument("--cwd", type=str, default=".", help="Working directory")
         parser.add_argument("--name", type=str, default=None, help="Name of the launch")
+        parser.add_argument("--quiet", action="store_true", help="Echo output to screen")
 
         parser_results, _ = parser.parse_known_args()
 
@@ -590,7 +597,7 @@ def main():
         loop = asyncio.get_event_loop()
                         
         exit_event = asyncio.Event()
-        core = PyriCore(parser_results.name, task_launch, exit_event, log_dir, loop)
+        core = PyriCore(parser_results.name, task_launch, exit_event, log_dir, not parser_results.quiet, loop)
         loop.call_soon(lambda: core.start_all())
         def ctrl_c_pressed(signum, frame):
             loop.call_soon_threadsafe(lambda: exit_event.set())
