@@ -324,7 +324,7 @@ class SimpleSubprocessImpl:
             import signal
             pid = self._process.pid
             pgid = os.getpgid(pid)
-            os.killpg(pgid, signal.SIGTERM)
+            os.killpg(pgid, signal.SIGINT)
 
     def close(self):
         if sys.platform == "win32":            
