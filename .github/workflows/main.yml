@@ -19,6 +19,7 @@ jobs:
     - name: pip
       run: |
         pip3 install .[test]
+        pip3 install git+https://github.com/johnwason/simple-launch-process.git
     - name: test
       run: |
         python3 -m pytest -s
