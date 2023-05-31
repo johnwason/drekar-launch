@@ -39,7 +39,7 @@ class ProcessState(Enum):
     PAUSE_PENDING = 0x6
     PAUSED = 0x7
 
-class PyriProcess:
+class SimpleProcess:
     def __init__(self, parent, task_launch, log_dir, loop):
         self.parent = parent
         self.task_launch = task_launch
@@ -137,7 +137,7 @@ class PyriProcess:
         except:
             traceback.print_exc()
 
-class PyriCore:
+class SimpleCore:
     def __init__(self, name, task_launches, exit_event, log_dir, screen, loop):
         self.name = name
         self.task_launches = dict()
@@ -153,7 +153,7 @@ class PyriCore:
         self.exit_event = exit_event
 
     def _do_start(self,s):
-        p = PyriProcess(self, s, self.log_dir, self._loop)
+        p = SimpleProcess(self, s, self.log_dir, self._loop)
         self._subprocesses[s.name] = p
         self._loop.create_task(p.run())
 
@@ -256,17 +256,17 @@ async def create_subprocess_exec(process, args, env, cwd):
 
         subprocess_impl_win32.win32_attach_job_and_resume_process(process, job_handle)
 
-        return PyriSubprocessImpl(process,job_handle)
+        return SimpleSubprocessImpl(process,job_handle)
 
     else:
         #TODO: Use "start_new_session=True" arg for new process
         process = await asyncio.create_subprocess_exec(process,*args, \
             stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE,\
             env=env, cwd=cwd, close_fds=True, preexec_fn=os.setsid )
-        return PyriSubprocessImpl(process)
+        return SimpleSubprocessImpl(process)
 
 
-class PyriSubprocessImpl:
+class SimpleSubprocessImpl:
     def __init__(self, asyncio_subprocess, job_handle = None):
         self._process = asyncio_subprocess
         self._job_handle = job_handle
@@ -597,7 +597,7 @@ def main():
         loop = asyncio.get_event_loop()
                         
         exit_event = asyncio.Event()
-        core = PyriCore(parser_results.name, task_launch, exit_event, log_dir, not parser_results.quiet, loop)
+        core = SimpleCore(parser_results.name, task_launch, exit_event, log_dir, not parser_results.quiet, loop)
         loop.call_soon(lambda: core.start_all())
         def ctrl_c_pressed(signum, frame):
             loop.call_soon_threadsafe(lambda: exit_event.set())
