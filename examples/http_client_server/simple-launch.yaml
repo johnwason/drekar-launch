@@ -1,0 +1,11 @@
+name: example_http_servers
+tasks:
+  - name: http_server
+    program: python.exe
+    args: -m http.server 8100
+    cwd: ./server1
+  - name: http_client
+    program: curl.exe
+    args: http://localhost:8100
+    start-delay: 2
+    quit-on-terminate: true

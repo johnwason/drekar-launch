@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+
+[project]
+name = "simple-launch"
+version = "0.0.1"
+authors = [
+    {name = "John Wason", email = "wason@wasontech.com"}
+]
+description = "A simple launcher for Robotics applications"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.6"
+dependencies = [
+    "pyyaml",
+    "appdirs"
+]
