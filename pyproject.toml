@@ -15,6 +15,9 @@ dependencies = [
     "appdirs"
 ]
 
+[project.scripts]
+simple-launch = "simple_launch:main"
+
 [tool.setuptools]
 py-modules = [
     "simple_launch"
