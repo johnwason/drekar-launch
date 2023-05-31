@@ -71,6 +71,7 @@ python -m simple_launch
 * `--cwd=`: Set the default working directory for processes
 * `--name=`: Override the name of the launch group
 * `--quiet`: Flag to suppress outputting to the terminal
+* `--gui`: Show a simple GUI to stop the tasks
 
 Simple Launch saves the output to log files located in the following locations:
 
