@@ -2,8 +2,11 @@ name: example_http_servers
 tasks:
   - name: http_server
     program: python.exe
-    args: -m http.server 8100
-    cwd: ./server1
+    args: 
+     - "example_http_server.py"
+     - 8100
+     - "Hello from server 1"
+    cwd: .
   - name: http_client
     program: curl.exe
     args: http://localhost:8100
