@@ -52,6 +52,7 @@ class SimpleProcess:
         self._process = None
         self._term_attempts = 0
         self.screen = parent.screen
+        self.exit_status = -1
     
     async def run(self):
         s = self.task_launch
@@ -75,7 +76,7 @@ class SimpleProcess:
                     self.parent.process_state_changed(s.name,ProcessState.RUNNING)
                     stdout_read_task = asyncio.ensure_future(self._process.stdout.readline())
                     stderr_read_task = asyncio.ensure_future(self._process.stderr.readline())
-                    while self._keep_going:
+                    while True: #self._keep_going:
                         wait_tasks = list(filter(lambda x: x is not None, [stdout_read_task, stderr_read_task]))
                         if len(wait_tasks) == 0:
                             break
@@ -100,7 +101,14 @@ class SimpleProcess:
                                 stdout_read_task = asyncio.ensure_future(self._process.stdout.readline())
                                 if self.screen:
                                     print(f"[{self.task_launch.name}]  " + stdout_line.decode("utf-8"),end="",file=sys.stdout)
+                        if stdout_read_task is None and stderr_read_task is None:
+                            break
                     await self._process.wait()
+                    self.exit_status = self._process.get_exit_status()
+                    if self.exit_status != 0:
+                        stderr_log.write(f"Process {s.name} exited with status {self.exit_status}\n")
+                        if self.screen:
+                            print(f"[{self.task_launch.name}]  Process {s.name} exited with status {self.exit_status}",file=sys.stderr)
                     self.parent.process_state_changed(s.name,ProcessState.STOPPED)
                 except:
                     self._process = None
@@ -246,6 +254,14 @@ class SimpleCore:
         except:
             traceback.print_exc()
 
+    def get_exit_status(self):
+        exit_status = 0
+        with self._lock:
+            for p in self._subprocesses.values():
+                if p.exit_status != 0:
+                    exit_status = p.exit_status
+        return exit_status
+
 
 async def create_subprocess_exec(process, args, env, cwd):
     if sys.platform == "win32":
@@ -317,6 +333,10 @@ class SimpleSubprocessImpl:
                 self._process.kill()
             except Exception:
                 pass
+
+    def get_exit_status(self):
+        return self._process.returncode
+
 
 if sys.platform == "win32":
     import ctypes.wintypes
@@ -696,6 +716,10 @@ def main():
         if gui is not None:
             gui.close()
         print("Exiting!")
+        exit_status = core.get_exit_status()
+        if exit_status != 0:
+            print(f"Exit status: {exit_status}")
+        sys.exit(exit_status)
     except Exception:
         traceback.print_exc()
     
