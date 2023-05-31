@@ -12,4 +12,4 @@ def test_simple_launch_quit_err():
     res_dir = Path(__file__).parent / "res"
     res = subprocess.call([sys.executable, "-msimple_launch", "--config=simple-launch-quit-err.yaml"],
                           cwd=res_dir, close_fds=True)
-    assert res == 159375, "Expected return code 159375, got " + str(res)
+    assert res == 42, "Expected return code 42, got " + str(res)
