@@ -18,6 +18,7 @@ import os
 import time
 import signal
 import subprocess
+import simple_launch_process
 
 
 class SimpleTask(NamedTuple):
@@ -56,8 +57,8 @@ class SimpleProcess:
     
     async def run(self):
         s = self.task_launch
-        stdout_log_fname = self.log_dir.joinpath(f"{s.name}.txt")
-        stderr_log_fname = self.log_dir.joinpath(f"{s.name}.stderr.txt")
+        stdout_log_fname = self.log_dir.joinpath(f"{s.name}.log")
+        stderr_log_fname = self.log_dir.joinpath(f"{s.name}.stderr.log")
         with open(stdout_log_fname,"w") as stdout_log, open(stderr_log_fname,"w") as stderr_log:
             if s.start_delay > 0:
                 stderr_log.write(f"Delaying starting {s.name} for {s.start_delay} seconds...\n")
@@ -269,8 +270,8 @@ async def create_subprocess_exec(process, args, env, cwd):
 
         process = await asyncio.create_subprocess_exec(process,*args, \
             stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE,\
-            env=env, cwd=cwd, creationflags=subprocess_impl_win32.CREATE_SUSPENDED # \
-            #| subprocess.CREATE_NEW_PROCESS_GROUP 
+            env=env, cwd=cwd, creationflags=subprocess_impl_win32.CREATE_SUSPENDED \
+            | subprocess.CREATE_NEW_PROCESS_GROUP 
             ,close_fds=True)
 
         subprocess_impl_win32.win32_attach_job_and_resume_process(process, job_handle)
@@ -515,28 +516,6 @@ if sys.platform == "win32":
 
     _CtrlCHandlerRoutine = ctypes.WINFUNCTYPE(ctypes.wintypes.BOOL, ctypes.wintypes.DWORD)
 
-class _ConfigCtrlCPressedHandler:
-
-    def __init__(self, handler):
-        self.handler = handler
-        
-        if sys.platform == "win32":
-            # Configure win32 callback for ctrl-c            
-            self.ctrl_c_handler_ptr = _CtrlCHandlerRoutine(self.win_ctrl_c_handler)
-            
-            ctypes.windll.kernel32.SetConsoleCtrlHandler(self.ctrl_c_handler_ptr, 1)
-        else:
-            signal.signal(signal.SIGINT, handler)
-            signal.signal(signal.SIGTERM, handler)
-
-    def win_ctrl_c_handler(self,code):
-        try:
-            print("Ctrl-C pressed")
-            self.handler(signal.SIGINT,0)
-        except:
-            traceback.print_exc()
-        return True
-
 def parse_task_launch_from_yaml(yaml_dict, cwd):
     # parse yaml_dict into SimpleTask tuple
     name = yaml_dict["name"]
@@ -689,8 +668,8 @@ def main():
         if name is None:
             name = "simple-launch"
 
-        timestamp = datetime.now().strftime("simple-launch-%Y-%m-%d--%H-%M-%S")
-        log_dir = Path(appdirs.user_log_dir(appname="simple-launch")).joinpath(name).joinpath(timestamp)
+        timestamp = datetime.now().strftime("-%Y-%m-%d--%H-%M-%S")
+        log_dir = Path(appdirs.user_log_dir(appname="simple-launch")).joinpath(name).joinpath(name + timestamp)
         log_dir.mkdir(parents=True, exist_ok=True)        
         loop = asyncio.get_event_loop()
                         
@@ -701,10 +680,10 @@ def main():
             gui = SimpleGui(name, core, exit_event)
             gui.start()
         loop.call_soon(lambda: core.start_all())
-        def ctrl_c_pressed(signum, frame):
+        def ctrl_c_pressed():
             loop.call_soon_threadsafe(lambda: exit_event.set())
             loop.call_soon_threadsafe(lambda: core.close())
-        exit_handler = _ConfigCtrlCPressedHandler(ctrl_c_pressed)
+        simple_launch_process.wait_exit_callback(ctrl_c_pressed)
         print("Press Ctrl-C to exit")        
         loop.run_until_complete(exit_event.wait())
         print("Exit received, closing")
@@ -722,6 +701,7 @@ def main():
         sys.exit(exit_status)
     except Exception:
         traceback.print_exc()
+        raise
     
 
 

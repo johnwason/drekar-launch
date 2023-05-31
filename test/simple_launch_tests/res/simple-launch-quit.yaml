@@ -1,0 +1,12 @@
+name: test_simple_launch
+tasks:
+  - name: test_http_server_1
+    program: python
+    args: _test_http_server.py 8212 test_server_3
+    cwd: .
+  - name: test_http_client
+    program: python
+    args: _test_http_client.py 8212
+    cwd: .
+    start-delay: 1
+    quit-on-terminate: true

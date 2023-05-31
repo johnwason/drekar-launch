@@ -1,0 +1,11 @@
+name: test_simple_launch
+tasks:
+  - name: test_http_server_1
+    program: python
+    args: _test_http_server.py 8210 test_server_1
+    cwd: .
+  - name: test_http_server_2
+    program: python
+    args: _test_http_server.py 8211 test_server_2
+    cwd: .
+    start-delay: 2

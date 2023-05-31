@@ -37,14 +37,18 @@ name: example_http_servers
 tasks:
   - name: http_server_1
     program: python.exe
-    args: -m http.server 8100
-    cwd: ./server1
+    args: example_http_server.py 8100 Server1
+    cwd: .
   - name: http_server_2
     program: python.exe
-    args: -m http.server 8101
-    cwd: ./server2
+    args:
+      - example_http_server.py
+      - 8101
+      - Hello from Server2!
     start-delay: 1
 ```
+
+The `example_http_server.py` program uses `simple-launch-process` to wait for the shutdown signal.
 
 In this example, the `name` field is the name of the launch group. The `tasks` section contains a list of tasks to 
 launch. The following fields are used to configure the launch of each task:
