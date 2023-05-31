@@ -4,6 +4,7 @@ from ctypes import ArgumentError
 import asyncio
 import gc
 import importlib
+import shutil
 import yaml
 from typing import NamedTuple, List, Dict
 from enum import Enum
@@ -557,6 +558,11 @@ def parse_task_launch_from_yaml(yaml_dict, cwd):
                     if len(env_line_split) == 2:
                         env[env_line_split[0]] = env_line_split[1]
                 env_line = f.readline()
+
+    if(Path(program).name == program):
+        program = shutil.which(program, path=env["PATH"])
+        if program is None:
+            raise Exception("Could not find program: {}".format(program))
 
     return SimpleTask(
         name=name,
