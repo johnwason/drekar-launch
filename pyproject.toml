@@ -14,3 +14,8 @@ dependencies = [
     "pyyaml",
     "appdirs"
 ]
+
+[tool.setuptools]
+py-modules = [
+    "simple_launch"
+]
