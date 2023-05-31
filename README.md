@@ -32,6 +32,7 @@ tasks:
   - name: http_server_2
     program: python.exe
     args: -m http.server 8101
+    cwd: ./server2
     start-delay: 1
 ```
 
