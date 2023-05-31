@@ -537,6 +537,7 @@ def parse_task_launch_from_yaml(yaml_dict, cwd):
     if "env-file" in yaml_dict:
         env_file = yaml_dict["env-file"]
         with open(env_file, "r") as f:
+            env = dict()
             env_line = f.readline()
             while env_line:
                 env_line = env_line.strip()
