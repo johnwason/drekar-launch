@@ -9,6 +9,12 @@ extracted from the `pyri-core` module, part of the PyRI Open-Source Teach Pendan
 designed to be simpler and independent of ROS. It also has improvements in handling Windows process management
 using Windows Job Objects. Yaml files are used to configure the processes to launch.
 
+See also `simple-launch-process`, a companion library that contains utility functions to use within processes
+hosted by `simple-launch`. The functions `wait_exit()` and `wait_exit_callback()` assist in receiving shutdown
+signals in a reliable cross-platform manner.
+
+See `simple-launch-process`: https://github.com/johnwason/simple-launch-process
+
 ## Installation
 
 ```
