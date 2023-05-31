@@ -532,6 +532,7 @@ def parse_task_launch_from_yaml(yaml_dict, cwd):
             args = [str(args)]
         else:
             assert isinstance(args,list), "process args must be a string or list"
+            args = [str(a) for a in args]
     restart = yaml_dict.get("restart", False)
     restart_backoff = yaml_dict.get("restart-backoff", 5)
     tags = yaml_dict.get("tags", [])
