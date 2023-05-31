@@ -525,7 +525,13 @@ def parse_task_launch_from_yaml(yaml_dict, cwd):
     if args is None:
         args = []
     else:
-        args = args.split()
+        if isinstance(args,str):
+            args = args.split()
+        if isinstance(args,bool) or isinstance(args,int) or isinstance(args,float):
+            # Corner case where args is another yaml type
+            args = [str(args)]
+        else:
+            assert isinstance(args,list), "process args must be a string or list"
     restart = yaml_dict.get("restart", False)
     restart_backoff = yaml_dict.get("restart-backoff", 5)
     tags = yaml_dict.get("tags", [])
