@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  release:
+    types:
+      - created
+    
+jobs:
+  ubuntu_test:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v3
+    - name: apt
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python3 python3-pip curl
+    - name: pip
+      run: |
+        pip3 install .[test]
+    - name: test
+      run: |
+        python3 -m pytest -s
+

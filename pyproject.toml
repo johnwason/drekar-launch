@@ -23,3 +23,9 @@ simple-launch = "simple_launch:main"
 py-modules = [
     "simple_launch"
 ]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pywin32;platform_system=='Windows'"
+]
