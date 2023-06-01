@@ -1,7 +1,5 @@
 # Simple Launch
 
-**WARNING: THIS IS UNFINISHED SOFTWARE**
-
 `simple-launch` is a simple tool to launch and manage multiple processes. It is based on the process management code
 extracted from the `pyri-core` module, part of the PyRI Open-Source Teach Pendant
 
@@ -81,7 +79,8 @@ python -m simple_launch
 
 `simple-launch` accepts the following optional command line arguments:
 
-* `--config=`: Specify and alternative configuration file
+* `--config=`: Specify an alternative configuration file
+* `--config-js=`: Specify an alternative configuration file that uses Jinja2 templates
 * `--cwd=`: Set the default working directory for processes
 * `--name=`: Override the name of the launch group
 * `--quiet`: Flag to suppress outputting to the terminal
@@ -96,6 +95,29 @@ Simple Launch saves the output to log files located in the following locations:
 Logs should be periodically cleaned if too much disk space is used.
 
 *TODO: Add automatic log cleaning.*
+
+Jinja2 Templates can be used to generate configurations that fill in values at runtime or even include other
+templates. See the Jinja2 documentation (https://jinja.palletsprojects.com/) for more information on using templates.
+
+Four variables are available in the template:
+
+* `configpath`: Absolute path to the configuration file
+* `configdir`: Directory containing the configuration file
+* `env`: Environmental variables
+* `platform`: Current platform of the system as returned by `sys.platform`. Typically `win32`, `linux`, or `darwin` (Mac OS)
+* `vars`: Extra variables passed on the command line. Use `--var-name=value`, where `name` and `value` are replaced with specific values.
+
+For example, if `CONDA_PREFIX` needs to be used:
+
+```yaml
+name: example_http_servers
+tasks:
+  - name: http_server_1
+    program: {{ env["CONDA_PREFIX"] }}/python.exe
+    args: {{ configdir }}/example_http_server.py 8100 Server1
+    cwd: {{ env["CONDA_PREFIX"] }}
+```
+
 
 ## License
 
