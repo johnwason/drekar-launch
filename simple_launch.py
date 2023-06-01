@@ -18,6 +18,7 @@ import os
 import time
 import signal
 import subprocess
+import jinja2
 import simple_launch_process
 
 
@@ -605,6 +606,9 @@ def parse_task_launch_from_yaml(yaml_dict, cwd):
 
 def parse_task_launches_from_yaml(f, cwd):
     yaml_dict = yaml.safe_load(f)
+    return parse_task_launches_from_yaml_dict(yaml_dict, cwd)
+
+def parse_task_launches_from_yaml_dict(yaml_dict, cwd):
     yaml_tasks = yaml_dict["tasks"]
     name = yaml_dict.get("name",None)
     task_launches = []
@@ -673,20 +677,68 @@ class SimpleGui:
         self.root.event_generate("<<exit>>")
         self._thread.join()
 
+def parse_task_launches_from_jinja2_config(config, config_fname, cwd, extra_process_args):
+
+    config_absolute_path = os.path.abspath(config_fname)
+    config_dir = os.path.dirname(config_absolute_path)
+    config_text = config.read()
+
+    jinja2_env = jinja2.Environment(
+        loader=jinja2.FileSystemLoader(config_dir),
+        undefined=jinja2.StrictUndefined,
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
+
+    # create vars from extract args starting with --var-
+    vars = dict()
+    for a in extra_process_args:
+        if a.startswith("--var-"):
+            var_name = a.split("=",1)[0][6:]
+            var_value = a.split("=",1)[1]
+            vars[var_name] = var_value
+
+    extra_args = {
+        "configdir": config_dir,
+        "configpath": config_absolute_path,
+        "env": os.environ,
+        "vars": vars
+    }
+
+    config_text = jinja2_env.from_string(config_text).render(**extra_args)
+    yaml_dict = yaml.safe_load(config_text)
+    name, task_launches = parse_task_launches_from_yaml_dict(yaml_dict, cwd)
+
+    return name, task_launches
 
 def main():
     try:
         parser = argparse.ArgumentParser("PyRI Core Launcher")
-        parser.add_argument("--config", type=str, default="simple-launch.yaml", help="Configuration file")
+        parser.add_argument("--config", type=str, default=None, help="Configuration file")
+        parser.add_argument("--config-j2", type=str, default=None, help="Configuration file (jinja2 template)")
         parser.add_argument("--cwd", type=str, default=".", help="Working directory")
         parser.add_argument("--name", type=str, default=None, help="Name of the launch")
         parser.add_argument("--quiet", action="store_true", help="Echo output to screen")
         parser.add_argument("--gui", action="store_true", help="Run GUI")
 
-        parser_results, _ = parser.parse_known_args()
+        parser_results, remaining_args = parser.parse_known_args()
 
-        with open(parser_results.config, "r") as f:
-            name, task_launch = parse_task_launches_from_yaml(f, parser_results.cwd)
+        
+        # check that both config and config-j2 are not specified
+        if parser_results.config is not None and parser_results.config_j2 is not None:
+            raise Exception("Only one of --config or --config-j2 can be specified")
+        
+        # check that config or config-j2 is specified
+        if parser_results.config_j2 is not None:
+            with open(parser_results.config_j2, "r") as f:                
+                name, task_launch = parse_task_launches_from_jinja2_config(f, parser_results.config_j2, parser_results.cwd, remaining_args)
+        elif parser_results.config is not None:
+            with open (parser_results.config, "r") as f:
+                name, task_launch = parse_task_launches_from_yaml(f, parser_results.cwd)
+        else:
+            # use default config simple-launch.yaml
+            with open("simple-launch.yaml", "r") as f:
+                name, task_launch = parse_task_launches_from_yaml(f, parser_results.cwd)
 
         name = parser_results.name if parser_results.name is not None else name
         if name is None:

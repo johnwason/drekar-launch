@@ -13,7 +13,8 @@ requires-python = ">=3.8"
 dependencies = [
     "pyyaml",
     "appdirs",
-    "simple-launch-process"
+    "simple-launch-process",
+    "jinja2"
 ]
 readme = "README.md"
 
