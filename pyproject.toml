@@ -3,13 +3,13 @@ requires = ["setuptools", "wheel"]
 
 [project]
 name = "simple-launch"
-version = "0.0.1"
+version = "0.1.0"
 authors = [
     {name = "John Wason", email = "wason@wasontech.com"}
 ]
 description = "A simple launcher for Robotics applications"
 license = {text = "Apache-2.0"}
-requires-python = ">=3.6"
+requires-python = ">=3.8"
 dependencies = [
     "pyyaml",
     "appdirs"
