@@ -282,7 +282,7 @@ async def create_subprocess_exec(process, args, env, cwd):
         #TODO: Use "start_new_session=True" arg for new process
         process = await asyncio.create_subprocess_exec(process,*args, \
             stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE,\
-            env=env, cwd=cwd, close_fds=True, preexec_fn=os.setsid )
+            env=env, cwd=cwd, close_fds=True, start_new_session=True )
         return SimpleSubprocessImpl(process)
 
 
