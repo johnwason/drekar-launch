@@ -20,7 +20,21 @@ jobs:
     - name: pip
       run: |
         pip3 install .[test]
+    - name: test
+      run: |
+        python3 -m pytest -s
+  ubuntu_test_unstable:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v3
+    - name: apt
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python3 python3-pip curl
+    - name: pip
+      run: |
         pip3 install git+https://github.com/johnwason/simple-launch-process.git
+        pip3 install .[test]
     - name: test
       run: |
         python3 -m pytest -s
@@ -31,7 +45,17 @@ jobs:
     - name: pip
       run: |
         pip install .[test]
+    - name: test
+      run: |
+        python -m pytest -s
+  windows_test_unstable:
+    runs-on: windows-2022
+    steps:
+    - uses: actions/checkout@v3
+    - name: pip
+      run: |
         pip install git+https://github.com/johnwason/simple-launch-process.git
+        pip install .[test]
     - name: test
       run: |
         python -m pytest -s
@@ -44,8 +68,21 @@ jobs:
         python-version: '3.10'
     - name: pip
       run: |
-        python -m pip install .[test]
         python -m pip install git+https://github.com/johnwason/simple-launch-process.git
+        python -m pip install .[test]
+    - name: test
+      run: |
+        python -m pytest -s
+  macos_test_unstable:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    - name: pip
+      run: |
+        python -m pip install .[test]
     - name: test
       run: |
         python -m pytest -s
