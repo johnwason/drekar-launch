@@ -702,7 +702,8 @@ def parse_task_launches_from_jinja2_config(config, config_fname, cwd, extra_proc
         "configdir": config_dir,
         "configpath": config_absolute_path,
         "env": os.environ,
-        "vars": vars
+        "vars": vars,
+        "platform": sys.platform
     }
 
     config_text = jinja2_env.from_string(config_text).render(**extra_args)
