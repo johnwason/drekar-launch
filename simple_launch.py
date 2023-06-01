@@ -475,16 +475,18 @@ if sys.platform == "win32":
             for i in range(win32_thread_info.NumberOfProcessIdsInList):
                 pids.append(win32_thread_info.ProcessIdList[i])
 
-            for p in pids:
-                subprocess_impl_win32.win32_send_pid_wm_close(p)
+            subprocess_impl_win32.win32_send_pid_wm_close(pids)
 
         def win32_send_pid_wm_close(pid):        
-            subprocess_impl_win32._win32_send_pid_wm_close_hwnd_message(pid)
-            subprocess_impl_win32._win32_send_pid_wm_close_hwnd_main(pid)
+            subprocess_impl_win32._win32_send_wm_close_hwnd_message(pid)
             subprocess_impl_win32._win32_send_ctrl_c_event(pid)
 
-        def _win32_send_pid_wm_close_hwnd_message(pid):
+        
+        def _win32_find_message_hwnds(pids):
+            if not isinstance(pids, list):
+                pids = [pids]
             hWnd_child_after = 0
+            hwnds = []
 
             while True:
                 hWnd = ctypes.windll.user32.FindWindowExW(subprocess_impl_win32.HWND_MESSAGE, hWnd_child_after, None, None)
@@ -493,28 +495,50 @@ if sys.platform == "win32":
                     break
                 process_id = ctypes.wintypes.DWORD()
                 ctypes.windll.user32.GetWindowThreadProcessId(hWnd,ctypes.byref(process_id))
-                if pid == process_id.value:
-                    ctypes.windll.user32.PostMessageW(hWnd,subprocess_impl_win32.WM_CLOSE,0,0)
+                if process_id.value in pids:
+                    hwnds.append(hWnd)
+                    #ctypes.windll.user32.PostMessageW(hWnd,subprocess_impl_win32.WM_CLOSE,0,0)
                 hWnd_child_after = hWnd
+            return hwnds
+        
+        def _win32_find_main_hwnds(pids):
+            if not isinstance(pids, list):
+                pids = [pids]
 
-        def _win32_send_pid_wm_close_hwnd_main(pid):
+            hwnds = []
+
+            # Create list of top level windows
             
-
             def worker(hWnd, lParam):
                 process_id = ctypes.wintypes.DWORD()
                 ctypes.windll.user32.GetWindowThreadProcessId(hWnd,ctypes.byref(process_id))
                 if lParam == process_id.value:
-                    ctypes.windll.user32.PostMessageW(hWnd,subprocess_impl_win32.WM_CLOSE,0,0)
+                    hwnds.append(hWnd)
                 return True
-
+            
             cb_worker = subprocess_impl_win32.WNDENUMPROC(worker)
-            if not ctypes.windll.user32.EnumWindows(cb_worker, pid):
-                return
+            if not ctypes.windll.user32.EnumWindows(cb_worker, pids[0]):
+                return hwnds
+            
+            # Filter out windows that are children of other windows
+            hwnds = [hWnd for hWnd in hwnds if not ctypes.windll.user32.GetParent(hWnd)]
+            return hwnds
+        
+        def _win32_send_wm_close_hwnd_message(pid):
+            # check for main window first, then send to message windows
+            hwnds = subprocess_impl_win32._win32_find_main_hwnds(pid)
+            print(f"main hwnds: {hwnds}")
+            if not hwnds:
+                hwnds = subprocess_impl_win32._win32_find_message_hwnds(pid)
+            for hWnd in hwnds:
+                ctypes.windll.user32.PostMessageW(hWnd,subprocess_impl_win32.WM_CLOSE,0,0)
 
         def _win32_send_ctrl_c_event(pid):
-            ctypes.windll.kernel32.GenerateConsoleCtrlEvent(1,pid)
-
-    _CtrlCHandlerRoutine = ctypes.WINFUNCTYPE(ctypes.wintypes.BOOL, ctypes.wintypes.DWORD)
+            if isinstance(pid, list):
+                for p in pid:
+                    subprocess_impl_win32._win32_send_ctrl_c_event(p)
+                return
+            ctypes.windll.kernel32.GenerateConsoleCtrlEvent(0,pid)
 
 def parse_task_launch_from_yaml(yaml_dict, cwd):
     # parse yaml_dict into SimpleTask tuple
