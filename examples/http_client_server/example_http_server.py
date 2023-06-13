@@ -1,5 +1,5 @@
 import sys
-import simple_launch_process
+import drekar_launch_process
 from http import server as http_server
 
 
@@ -25,7 +25,7 @@ server=http_server.HTTPServer(('',port),
 def shutdown_server():
     server.shutdown()
 
-simple_launch_process.wait_exit_callback(shutdown_server)
+drekar_launch_process.wait_exit_callback(shutdown_server)
 
 print("Server started on port", port)
 sys.stdout.flush()

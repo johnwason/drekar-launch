@@ -1,5 +1,5 @@
 import sys
-import simple_launch_process
+import drekar_launch_process
 from http import server as http_server
 
 
@@ -19,14 +19,14 @@ class MyHTTPRequestHandler(http_server.BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
 
-server=http_server.HTTPServer(('',port), 
+server=http_server.ThreadingHTTPServer(('',port), 
         MyHTTPRequestHandler)
 
 def shutdown_server():
     print("Receiving shutdown signal")
     server.shutdown()
 
-simple_launch_process.wait_exit_callback(shutdown_server)
+drekar_launch_process.wait_exit_callback(shutdown_server)
 
 print("Server started on port", port)
 sys.stdout.flush()

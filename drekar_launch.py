@@ -19,10 +19,10 @@ import time
 import signal
 import subprocess
 import jinja2
-import simple_launch_process
+import drekar_launch_process
 
 
-class SimpleTask(NamedTuple):
+class DrekarTask(NamedTuple):
     name: str
     program: str
     cwd: str
@@ -44,7 +44,7 @@ class ProcessState(Enum):
     PAUSE_PENDING = 0x6
     PAUSED = 0x7
 
-class SimpleProcess:
+class DrekarProcess:
     def __init__(self, parent, task_launch, log_dir, loop):
         self.parent = parent
         self.task_launch = task_launch
@@ -150,7 +150,7 @@ class SimpleProcess:
         except:
             traceback.print_exc()
 
-class SimpleCore:
+class DrekarCore:
     def __init__(self, name, task_launches, exit_event, log_dir, screen, loop):
         self.name = name
         self.task_launches = dict()
@@ -166,7 +166,7 @@ class SimpleCore:
         self.exit_event = exit_event
 
     def _do_start(self,s):
-        p = SimpleProcess(self, s, self.log_dir, self.loop)
+        p = DrekarProcess(self, s, self.log_dir, self.loop)
         self._subprocesses[s.name] = p
         self.loop.create_task(p.run())
 
@@ -277,17 +277,17 @@ async def create_subprocess_exec(process, args, env, cwd):
 
         subprocess_impl_win32.win32_attach_job_and_resume_process(process, job_handle)
 
-        return SimpleSubprocessImpl(process,job_handle)
+        return DrekarSubprocessImpl(process,job_handle)
 
     else:
         #TODO: Use "start_new_session=True" arg for new process
         process = await asyncio.create_subprocess_exec(process,*args, \
             stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE,\
             env=env, cwd=cwd, close_fds=True, start_new_session=True )
-        return SimpleSubprocessImpl(process)
+        return DrekarSubprocessImpl(process)
 
 
-class SimpleSubprocessImpl:
+class DrekarSubprocessImpl:
     def __init__(self, asyncio_subprocess, job_handle = None):
         self._process = asyncio_subprocess
         self._job_handle = job_handle
@@ -528,7 +528,6 @@ if sys.platform == "win32":
         def _win32_send_wm_close_hwnd_message(pid):
             # check for main window first, then send to message windows
             hwnds = subprocess_impl_win32._win32_find_main_hwnds(pid)
-            print(f"main hwnds: {hwnds}")
             if not hwnds:
                 hwnds = subprocess_impl_win32._win32_find_message_hwnds(pid)
             for hWnd in hwnds:
@@ -542,7 +541,7 @@ if sys.platform == "win32":
             ctypes.windll.kernel32.GenerateConsoleCtrlEvent(0,pid)
 
 def parse_task_launch_from_yaml(yaml_dict, cwd):
-    # parse yaml_dict into SimpleTask tuple
+    # parse yaml_dict into DrekarTask tuple
     name = yaml_dict["name"]
     program = yaml_dict["program"]
     cwd = yaml_dict.get("cwd", cwd)
@@ -588,7 +587,7 @@ def parse_task_launch_from_yaml(yaml_dict, cwd):
         if program is None:
             raise Exception("Could not find program: {}".format(program))
 
-    return SimpleTask(
+    return DrekarTask(
         name=name,
         program=program,
         cwd=cwd,
@@ -617,7 +616,7 @@ def parse_task_launches_from_yaml_dict(yaml_dict, cwd):
     return name, task_launches
 
 
-class SimpleGui:
+class DrekarGui:
 
     def __init__(self, name, core, exit_event):
         self.name = name
@@ -630,7 +629,7 @@ class SimpleGui:
         tk = importlib.import_module("tkinter")
 
         root = tk.Tk()
-        root.title(self.name + " Simple Launch")
+        root.title(self.name + " Drekar Launch")
         root.geometry("600x200")
 
         root.protocol("WM_DELETE_WINDOW", self._set_exit_event)
@@ -737,30 +736,30 @@ def main():
             with open (parser_results.config, "r") as f:
                 name, task_launch = parse_task_launches_from_yaml(f, parser_results.cwd)
         else:
-            # use default config simple-launch.yaml
-            with open("simple-launch.yaml", "r") as f:
+            # use default config drekar-launch.yaml
+            with open("drekar-launch.yaml", "r") as f:
                 name, task_launch = parse_task_launches_from_yaml(f, parser_results.cwd)
 
         name = parser_results.name if parser_results.name is not None else name
         if name is None:
-            name = "simple-launch"
+            name = "drekar-launch"
 
         timestamp = datetime.now().strftime("-%Y-%m-%d--%H-%M-%S")
-        log_dir = Path(appdirs.user_log_dir(appname="simple-launch")).joinpath(name).joinpath(name + timestamp)
+        log_dir = Path(appdirs.user_log_dir(appname="drekar-launch")).joinpath(name).joinpath(name + timestamp)
         log_dir.mkdir(parents=True, exist_ok=True)        
         loop = asyncio.get_event_loop()
                         
         exit_event = asyncio.Event()
-        core = SimpleCore(parser_results.name, task_launch, exit_event, log_dir, not parser_results.quiet, loop)
+        core = DrekarCore(parser_results.name, task_launch, exit_event, log_dir, not parser_results.quiet, loop)
         gui = None
         if parser_results.gui:
-            gui = SimpleGui(name, core, exit_event)
+            gui = DrekarGui(name, core, exit_event)
             gui.start()
         loop.call_soon(lambda: core.start_all())
         def ctrl_c_pressed():
             loop.call_soon_threadsafe(lambda: exit_event.set())
             loop.call_soon_threadsafe(lambda: core.close())
-        simple_launch_process.wait_exit_callback(ctrl_c_pressed)
+        drekar_launch_process.wait_exit_callback(ctrl_c_pressed)
         print("Press Ctrl-C to exit")        
         loop.run_until_complete(exit_event.wait())
         print("Exit received, closing")

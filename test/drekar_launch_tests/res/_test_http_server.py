@@ -1,6 +1,6 @@
 import json
 import sys
-import simple_launch_process
+import drekar_launch_process
 from http import server as http_server
 print(sys.argv)
 
@@ -31,7 +31,7 @@ def shutdown_server():
     print("Receiving shutdown signal")
     server.shutdown()
 
-simple_launch_process.wait_exit_callback(shutdown_server)
+drekar_launch_process.wait_exit_callback(shutdown_server)
 
 print("Test server started on port", port)
 sys.stdout.flush()

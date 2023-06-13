@@ -2,8 +2,8 @@
 requires = ["setuptools", "wheel"]
 
 [project]
-name = "simple-launch"
-version = "0.1.1"
+name = "drekar-launch"
+version = "0.1.2"
 authors = [
     {name = "John Wason", email = "wason@wasontech.com"}
 ]
@@ -13,17 +13,17 @@ requires-python = ">=3.8"
 dependencies = [
     "pyyaml",
     "appdirs",
-    "simple-launch-process",
+    "drekar-launch-process",
     "jinja2"
 ]
 readme = "README.md"
 
 [project.scripts]
-simple-launch = "simple_launch:main"
+drekar-launch = "drekar_launch:main"
 
 [tool.setuptools]
 py-modules = [
-    "simple_launch"
+    "drekar_launch"
 ]
 
 [project.optional-dependencies]
