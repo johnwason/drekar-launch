@@ -1,33 +1,33 @@
-# Simple Launch
+# Drekar Launch
 
-`simple-launch` is a simple tool to launch and manage multiple processes. It is based on the process management code
+`drekar-launch` is a simple tool to launch and manage multiple processes. It is based on the process management code
 extracted from the `pyri-core` module, part of the PyRI Open-Source Teach Pendant
 
-`simple-launch` has a similar goal to `roslaunch`, but
+`drekar-launch` has a similar goal to `roslaunch`, but
 designed to be simpler and independent of ROS. It also has improvements in handling Windows process management
 using Windows Job Objects. Yaml files are used to configure the processes to launch.
 
-`simple-launch` will show a minimal GUI windows when the `--gui` is specified. This window shows same basic
-information, and has a "Stop All" button that will shut down all tasks. This GUI is useful if `simple-launch` is 
+`drekar-launch` will show a minimal GUI windows when the `--gui` is specified. This window shows same basic
+information, and has a "Stop All" button that will shut down all tasks. This GUI is useful if `drekar-launch` is 
 started interactively by the user rather than running as a background service.
 
-See also `simple-launch-process`, a companion library that contains utility functions to use within processes
-hosted by `simple-launch`. The functions `wait_exit()` and `wait_exit_callback()` assist in receiving shutdown
+See also `drekar-launch-process`, a companion library that contains utility functions to use within processes
+hosted by `drekar-launch`. The functions `wait_exit()` and `wait_exit_callback()` assist in receiving shutdown
 signals in a reliable cross-platform manner.
 
-See `simple-launch-process`: https://github.com/johnwason/simple-launch-process
+See `drekar-launch-process`: https://github.com/johnwason/drekar-launch-process
 
 ## Installation
 
 ```
-python -m pip install --user simple-launch
+python -m pip install --user drekar-launch
 ```
 
 On Ubuntu, it may be necessary to replace `python` with `python3`.
 
 ## Usage
 
-Yaml files are used to configure the processes to launch. The following is an example of a `simple-launch.yaml` 
+Yaml files are used to configure the processes to launch. The following is an example of a `drekar-launch.yaml` 
 file that launches two Python servers.
 
 ```yaml
@@ -46,7 +46,7 @@ tasks:
     start-delay: 1
 ```
 
-The `example_http_server.py` program uses `simple-launch-process` to wait for the shutdown signal.
+The `example_http_server.py` program uses `drekar-launch-process` to wait for the shutdown signal.
 
 In this example, the `name` field is the name of the launch group. The `tasks` section contains a list of tasks to 
 launch. The following fields are used to configure the launch of each task:
@@ -63,21 +63,21 @@ launch. The following fields are used to configure the launch of each task:
 * `environment` (optional): Key/value pairs to add to environment
 * `env-file` (optional): File of environmental variable to override the environment
 
-`simple-launch` by default will load `simple-launch.yaml` in the current directory. To run with default settings,
-simply call `simple-launch`.
+`drekar-launch` by default will load `drekar-launch.yaml` in the current directory. To run with default settings,
+simply call `drekar-launch`.
 
 ```
-simple-launch
+drekar-launch
 ```
 
-In some cases, it may be necessary to use `python` to launch. The `simple-launch` executable may not be installed
+In some cases, it may be necessary to use `python` to launch. The `drekar-launch` executable may not be installed
 to `PATH`.
 
 ```
-python -m simple_launch
+python -m drekar_launch
 ```
 
-`simple-launch` accepts the following optional command line arguments:
+`drekar-launch` accepts the following optional command line arguments:
 
 * `--config=`: Specify an alternative configuration file
 * `--config-js=`: Specify an alternative configuration file that uses Jinja2 templates
@@ -86,11 +86,11 @@ python -m simple_launch
 * `--quiet`: Flag to suppress outputting to the terminal
 * `--gui`: Show a simple GUI to stop the tasks
 
-Simple Launch saves the output to log files located in the following locations:
+Drekar Launch saves the output to log files located in the following locations:
 
-* Windows: `%LOCALAPPDATA%\simple-launch\simple-launch\Logs`
+* Windows: `%LOCALAPPDATA%\drekar-launch\drekar-launch\Logs`
 * Linux: `$HOME/.cache/SuperApp/log`
-* Mac OS: `$HOME//Library/Logs/simple-launch`
+* Mac OS: `$HOME//Library/Logs/drekar-launch`
 
 Logs should be periodically cleaned if too much disk space is used.
 

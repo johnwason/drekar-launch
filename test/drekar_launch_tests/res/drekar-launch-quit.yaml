@@ -1,4 +1,4 @@
-name: test_simple_launch
+name: test_drekar_launch
 tasks:
   - name: test_http_server_1
     program: python

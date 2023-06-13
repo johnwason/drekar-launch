@@ -1,12 +1,14 @@
-name: test_simple_launch
+{% set server_text = "test_server_3_j2"%}
+
+name: test_drekar_launch
 tasks:
   - name: test_http_server_1
     program: python
-    args: _test_http_server.py 8219 test_server_3
+    args: _test_http_server.py 8212 {{server_text}}
     cwd: .
   - name: test_http_client
     program: python
-    args: _test_client_err.py
+    args: _test_http_client.py 8212
     cwd: .
     start-delay: 1
     quit-on-terminate: true

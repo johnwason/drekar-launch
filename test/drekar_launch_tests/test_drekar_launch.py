@@ -15,7 +15,7 @@ def _launch_http_servers():
 
     # Get current file location
     res_dir = Path(__file__).parent / "res"
-    proc = subprocess.Popen([sys.executable, "-msimple_launch"], cwd=res_dir, close_fds=True,\
+    proc = subprocess.Popen([sys.executable, "-mdrekar_launch"], cwd=res_dir, close_fds=True,\
                              creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0)
 
     return proc
@@ -61,7 +61,7 @@ def _assert_proc_returncode(proc):
     assert proc.returncode == 0, f"Process return code is {proc.returncode}"
 
 def _get_logdir_base(name):
-    log_dir = Path(appdirs.user_log_dir(appname="simple-launch")).joinpath(name)
+    log_dir = Path(appdirs.user_log_dir(appname="drekar-launch")).joinpath(name)
     print("Log dir is ", log_dir)
     return log_dir
 
@@ -90,7 +90,7 @@ def _assert_logs_exist(name):
     assert False
 
 def test_services():
-    _clear_logs("test_simple_launch")
+    _clear_logs("test_drekar_launch")
     launch_proc = _launch_http_servers()
 
     # TODO: check servers status
@@ -103,4 +103,4 @@ def test_services():
     print("Process exited")
     _assert_proc_returncode(launch_proc)
     print("Process return code is 0")
-    _assert_logs_exist("test_simple_launch")
+    _assert_logs_exist("test_drekar_launch")
