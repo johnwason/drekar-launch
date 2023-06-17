@@ -958,8 +958,10 @@ def main():
 
         timestamp = datetime.now().strftime("-%Y-%m-%d--%H-%M-%S")
         log_dir = Path(appdirs.user_log_dir(appname="drekar-launch")).joinpath(name).joinpath(name + timestamp)
-        log_dir.mkdir(parents=True, exist_ok=True)        
-        loop = asyncio.get_event_loop()
+        log_dir.mkdir(parents=True, exist_ok=True)
+        
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)        
                         
         exit_event = asyncio.Event()
         core = DrekarCore(parser_results.name, task_launch, exit_event, log_dir, not parser_results.quiet, loop)
