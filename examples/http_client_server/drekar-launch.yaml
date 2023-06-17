@@ -1,14 +1,14 @@
 name: example_http_servers
 tasks:
   - name: http_server
-    program: python.exe
+    program: python
     args: 
      - "example_http_server.py"
      - 8100
      - "Hello from server 1"
     cwd: .
   - name: http_client
-    program: curl.exe
+    program: curl
     args: http://localhost:8100
     start-delay: 2
     quit-on-terminate: true
