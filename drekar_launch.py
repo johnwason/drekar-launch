@@ -663,13 +663,13 @@ if sys.platform == "linux":
             sentinel_environ = os.environ.copy()
             sentinel_environ["DREKAR_LAUNCH_ENABLE_SENTINEL"] = "0"
             self.sentinel_process=subprocess.Popen([sys.executable, "-m", "drekar_launch", "--sentinel", str(os.getpid()), str(self.cgroup_path)], 
-                                                    env=sentinel_environ)
+                                                    env=sentinel_environ, close_fds=True, start_new_session=True)
             
         def stop_sentinel(self):
             if self.sentinel_process is None:
                 return
             try:                
-                os.kill(self.sentinel_process.pid, signal.SIGTERM)
+                os.killpg(self.sentinel_process.pid, signal.SIGTERM)
             except:
                 pass
 
