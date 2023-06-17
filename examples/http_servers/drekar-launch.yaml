@@ -1,11 +1,11 @@
 name: example_http_servers
 tasks:
   - name: http_server_1
-    program: python.exe
+    program: python
     args: example_http_server.py 8100 Server1
     cwd: .
   - name: http_server_2
-    program: python.exe
+    program: python
     args:
       - example_http_server.py
       - 8101
