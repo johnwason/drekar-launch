@@ -10,7 +10,10 @@ on:
     
 jobs:
   ubuntu_test:
-    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        runs-on: [ubuntu-20.04, ubuntu-22.04]
+    runs-on: ${{ matrix.runs-on }}
     steps:
     - uses: actions/checkout@v3
     - name: apt
