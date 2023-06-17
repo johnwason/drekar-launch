@@ -575,6 +575,8 @@ if sys.platform == "linux":
             
             self.cgroup_parent_path = _linux_cgroupv2_launch_scope.read_proc_cgroup(self._pid)
 
+            self.sentinel_process = None
+
         @staticmethod
         def read_proc_cgroup(pid):
             cgroup_path = None
@@ -608,6 +610,10 @@ if sys.platform == "linux":
                 # print(f"Creating cgroup {cgroup_path}")
                 cgroup_path.mkdir()
                 self.cgroup_path = cgroup_path
+
+                enable_sentinel_environ = os.environ.get("DREKAR_LAUNCH_ENABLE_SENTINEL", "1").strip().lower()
+                if enable_sentinel_environ == "1" or enable_sentinel_environ == "true":
+                    self.start_sentinel()
             except:
                 traceback.print_exc()
                 pass
@@ -621,17 +627,19 @@ if sys.platform == "linux":
             task_cgroup.create_task_cgroup()
             return task_cgroup
         
-        def _close_cgroup_path(self, cgroup_path):
+        @staticmethod
+        def close_cgroup_path(cgroup_path):
             try:
                 #Iterate through all subdirectories and recursively close them
                 for subpath in cgroup_path.iterdir():
                     if subpath.is_dir():
-                        self._close_cgroup_path(subpath)
+                        _linux_cgroupv2_launch_scope.close_cgroup_path(subpath)
                 cgroup_kill_path = cgroup_path / "cgroup.kill"
                 if cgroup_kill_path.exists():
-                    with open(self.cgroup_path / "cgroup.kill","w") as f:
+                    with open(cgroup_kill_path,"w") as f:
                         f.write("1")
                     pass
+                    time.sleep(0.1)
                 cgroup_path.rmdir()
             except:
                 traceback.print_exc()
@@ -641,9 +649,29 @@ if sys.platform == "linux":
             if self.cgroup_path is not None:
                 # Iterate through all subdirectories depth first
 
-                self._close_cgroup_path(self.cgroup_path)
+                self.close_cgroup_path(self.cgroup_path)
 
                 self.cgroup_path = None
+
+                if self.sentinel_process is not None:
+                    self.stop_sentinel()
+
+        def start_sentinel(self):
+            if self.sentinel_process is not None:
+                return
+            
+            sentinel_environ = os.environ.copy()
+            sentinel_environ["DREKAR_LAUNCH_ENABLE_SENTINEL"] = "0"
+            self.sentinel_process=subprocess.Popen([sys.executable, "-m", "drekar_launch", "--sentinel", str(os.getpid()), str(self.cgroup_path)], 
+                                                    env=sentinel_environ)
+            
+        def stop_sentinel(self):
+            if self.sentinel_process is None:
+                return
+            try:                
+                os.kill(self.sentinel_process.pid, signal.SIGTERM)
+            except:
+                pass
 
         def __enter__(self):
             self.create_launcher_cgroup()
@@ -687,7 +715,34 @@ if sys.platform == "linux":
         def __exit__(self, exc_type, exc_value, traceback):
             self.close()
 
-
+    def _sentinel_main():
+        if not _linux_cgroupv2_launch_scope.cgroupv2_supported():
+            return
+        assert len(sys.argv) >= 4
+        assert sys.argv[1] == "--sentinel"
+        parent_pid = int(sys.argv[2])
+        parent_cgroup_path = Path(sys.argv[3])
+        parent_pid_proc_path = Path(f"/proc/{parent_pid}")
+        evt = threading.Event()
+        drekar_launch_process.wait_exit_callback(lambda: evt.set())
+        while True:
+            evt.wait(15)
+            if evt.is_set():
+                break
+            if not parent_cgroup_path.exists():
+                return
+            
+            # Check if parent process is still alive
+            if not parent_pid_proc_path.exists():
+                break            
+            
+        # Parent process is dead, close cgroup
+        if not parent_cgroup_path.exists():
+            return
+        time.sleep(10)
+        if not parent_cgroup_path.exists():
+            return
+        _linux_cgroupv2_launch_scope.close_cgroup_path(Path(parent_cgroup_path))
 
 
 def parse_task_launch_from_yaml(yaml_dict, cwd):
@@ -862,6 +917,12 @@ def parse_task_launches_from_jinja2_config(config, config_fname, cwd, extra_proc
     return name, task_launches
 
 def main():
+
+    # Run the sentinel if requsted on linux
+    if sys.platform == "linux" and "--sentinel" in sys.argv:
+        _sentinel_main()
+        return
+
     core = None
     try:
         parser = argparse.ArgumentParser("PyRI Core Launcher")
