@@ -24,6 +24,9 @@ jobs:
       run: |
         python3 -m pip install --upgrade pip
         python3 -m pip install .[test]
+    - name: allow cgroup
+      run : |
+        sudo chown -R $(id -un):$(id -gn) /sys/fs/cgroup/system.slice/runner-provisioner.service || true
     - name: test
       run: |
         python3 -m pytest -s
