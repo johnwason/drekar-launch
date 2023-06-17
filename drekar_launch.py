@@ -18,6 +18,7 @@ import os
 import time
 import signal
 import subprocess
+import uuid
 import jinja2
 import drekar_launch_process
 
@@ -72,7 +73,7 @@ class DrekarProcess:
                     self.parent.process_state_changed(s.name,ProcessState.START_PENDING)
                     stderr_log.write(f"Starting process {s.name}...\n")
                     python_exe = sys.executable
-                    self._process = await create_subprocess_exec(s.program, s.args, s.environment, s.cwd)
+                    self._process = await create_subprocess_exec(s.program, s.args, s.environment, s.cwd, self.parent.cgroup)
                     # print(f"process pid: {self._process.pid}")
                     stderr_log.write(f"Process {s.name} started\n\n")                   
                     self.parent.process_state_changed(s.name,ProcessState.RUNNING)
@@ -164,6 +165,12 @@ class DrekarCore:
         self._subprocesses = dict()
         self._lock = threading.RLock()
         self.exit_event = exit_event
+        self.cgroup = None
+
+        if sys.platform == "linux":
+            self.cgroup = _linux_cgroupv2_launch_scope()
+            self.cgroup.create_launcher_cgroup()
+
 
     def _do_start(self,s):
         p = DrekarProcess(self, s, self.log_dir, self.loop)
@@ -198,7 +205,7 @@ class DrekarCore:
     def check_deps_status(self, deps):
         return True
 
-    def close(self):
+    def stop_all(self):
         with self._lock:
             if self._closed:
                 return
@@ -211,7 +218,7 @@ class DrekarCore:
                     traceback.print_exc()
                     pass
 
-    async def wait_all_closed(self):
+    async def wait_all_stopped(self):
         try:
             t1 = time.time()
             t_last_sent_close = 0
@@ -263,9 +270,13 @@ class DrekarCore:
                 if p.exit_status != 0:
                     exit_status = p.exit_status
         return exit_status
+    
+    def close(self):
+        if sys.platform == "linux":
+            self.cgroup.close()
 
 
-async def create_subprocess_exec(process, args, env, cwd):
+async def create_subprocess_exec(process, args, env, cwd, launcher_cgroup=None):
     if sys.platform == "win32":
         job_handle = subprocess_impl_win32.win32_create_job_object()
 
@@ -284,13 +295,17 @@ async def create_subprocess_exec(process, args, env, cwd):
         process = await asyncio.create_subprocess_exec(process,*args, \
             stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE,\
             env=env, cwd=cwd, close_fds=True, start_new_session=True )
+        if sys.platform == "linux" and launcher_cgroup is not None:
+            task_cgroup = launcher_cgroup.create_task_cgroup(process.pid)
+            return DrekarSubprocessImpl(process, task_cgroup = task_cgroup)
         return DrekarSubprocessImpl(process)
 
 
 class DrekarSubprocessImpl:
-    def __init__(self, asyncio_subprocess, job_handle = None):
+    def __init__(self, asyncio_subprocess, job_handle = None, task_cgroup = None):
         self._process = asyncio_subprocess
         self._job_handle = job_handle
+        self._task_cgroup = task_cgroup
         # TODO: Linux
 
     @property
@@ -330,11 +345,11 @@ class DrekarSubprocessImpl:
     def close(self):
         if sys.platform == "win32":            
             subprocess_impl_win32.win32_close_job_object(self._job_handle)
+        elif sys.platform == "linux" and self._task_cgroup:            
+            self._task_cgroup.close()
         else:
-            try:
+            with suppress(Exception):
                 self._process.kill()
-            except Exception:
-                pass
 
     def get_exit_status(self):
         return self._process.returncode
@@ -540,6 +555,141 @@ if sys.platform == "win32":
                 return
             ctypes.windll.kernel32.GenerateConsoleCtrlEvent(0,pid)
 
+if sys.platform == "linux":
+
+    class _linux_cgroupv2_launch_scope:
+
+        @staticmethod
+        def cgroupv2_supported():
+            if Path("/sys/fs/cgroup/cgroup.controllers").exists():
+                return True
+            return False
+
+        def __init__(self):
+            self._pid = os.getpid()
+            self.cgroup_parent_path = None
+            self.cgroup_path = None
+
+            if not self.cgroupv2_supported():
+                return
+            
+            self.cgroup_parent_path = _linux_cgroupv2_launch_scope.read_proc_cgroup(self._pid)
+
+        @staticmethod
+        def read_proc_cgroup(pid):
+            cgroup_path = None
+            try:
+                # read cgroup path from /proc/{pid}/cgroup
+                with open(f"/proc/{pid}/cgroup","r") as f:
+                    for line in f:
+                        if line.startswith("0::/"):
+                            path1 = line.split(":")[2]
+                            if path1.strip() == "/":
+                                # Not currently assigned to a cgroup
+                                break
+                            cgroup_path = Path("/sys/fs/cgroup") / Path(path1.strip().strip("/"))
+                            break
+            except:
+                # TODO: log error
+                traceback.print_exc()
+                pass
+
+            return cgroup_path
+        
+        def create_launcher_cgroup(self):
+            if not self.cgroupv2_supported():
+                return
+            
+            # create a new cgroup scope for this launcher with the name drekar-launch-{random_uuid}.scope
+            try:
+                cgroup_name = f"drekar-launch-{uuid.uuid4().hex}.scope"
+                cgroup_path = self.cgroup_parent_path / cgroup_name
+                # TODO: log
+                # print(f"Creating cgroup {cgroup_path}")
+                cgroup_path.mkdir()
+                self.cgroup_path = cgroup_path
+            except:
+                traceback.print_exc()
+                pass
+
+        def create_task_cgroup(self, task_pid):
+            task_name = f"task-{task_pid}"
+            if self.cgroup_path is None:
+                return _linux_cgroupv2_task_scope(None, task_name, task_pid)
+            
+            task_cgroup = _linux_cgroupv2_task_scope(self.cgroup_path, task_name, task_pid)
+            task_cgroup.create_task_cgroup()
+            return task_cgroup
+        
+        def _close_cgroup_path(self, cgroup_path):
+            try:
+                #Iterate through all subdirectories and recursively close them
+                for subpath in cgroup_path.iterdir():
+                    if subpath.is_dir():
+                        self._close_cgroup_path(subpath)
+                cgroup_kill_path = cgroup_path / "cgroup.kill"
+                if cgroup_kill_path.exists():
+                    with open(self.cgroup_path / "cgroup.kill","w") as f:
+                        f.write("1")
+                    pass
+                cgroup_path.rmdir()
+            except:
+                traceback.print_exc()
+                pass
+
+        def close(self):
+            if self.cgroup_path is not None:
+                # Iterate through all subdirectories depth first
+
+                self._close_cgroup_path(self.cgroup_path)
+
+                self.cgroup_path = None
+
+        def __enter__(self):
+            self.create_launcher_cgroup()
+            return self
+        
+        def __exit__(self, exc_type, exc_value, traceback):
+            self.close()
+
+
+    class _linux_cgroupv2_task_scope:
+        def __init__(self, cgroup_path, task_name, task_pid):
+            self.cgroup_path = cgroup_path
+            self.task_name = task_name
+            self.task_pid = task_pid
+            self.task_cgroup_path = None
+
+        def create_task_cgroup(self):
+            if self.cgroup_path is None:
+                return
+            
+            self.task_cgroup_path = self.cgroup_path / f"{self.task_name}.scope"
+            self.task_cgroup_path.mkdir()
+            # Move task to new cgroup
+            with open(self.task_cgroup_path / "cgroup.procs","w") as f:
+                f.write(str(self.task_pid))
+            
+        def close(self):
+            if self.task_cgroup_path is not None:
+                task_cgroup_kill_path = self.task_cgroup_path / "cgroup.kill"
+                if task_cgroup_kill_path.exists():
+                    with open(task_cgroup_kill_path,"w") as f:
+                        f.write("1")
+                    pass
+                self.task_cgroup_path.rmdir()
+                self.task_cgroup_path = None
+
+        def __enter__(self):
+            self.create_task_cgroup()
+            return self
+        
+        def __exit__(self, exc_type, exc_value, traceback):
+            self.close()
+
+
+
+
 def parse_task_launch_from_yaml(yaml_dict, cwd):
     # parse yaml_dict into DrekarTask tuple
     name = yaml_dict["name"]
@@ -712,6 +862,7 @@ def parse_task_launches_from_jinja2_config(config, config_fname, cwd, extra_proc
     return name, task_launches
 
 def main():
+    core = None
     try:
         parser = argparse.ArgumentParser("PyRI Core Launcher")
         parser.add_argument("--config", type=str, default=None, help="Configuration file")
@@ -758,13 +909,12 @@ def main():
         loop.call_soon(lambda: core.start_all())
         def ctrl_c_pressed():
             loop.call_soon_threadsafe(lambda: exit_event.set())
-            loop.call_soon_threadsafe(lambda: core.close())
         drekar_launch_process.wait_exit_callback(ctrl_c_pressed)
         print("Press Ctrl-C to exit")        
         loop.run_until_complete(exit_event.wait())
         print("Exit received, closing")
-        core.close()
-        loop.run_until_complete(core.wait_all_closed())
+        core.stop_all()
+        loop.run_until_complete(core.wait_all_stopped())
         #pending = asyncio.all_tasks(loop)
         # pending = asyncio.all_tasks()
         #loop.run_until_complete(asyncio.gather(*pending))
@@ -778,6 +928,9 @@ def main():
     except Exception:
         traceback.print_exc()
         raise
+    finally:
+        if core is not None:
+            core.close()
     
 
 
