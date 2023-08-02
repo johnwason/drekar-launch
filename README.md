@@ -122,3 +122,11 @@ tasks:
 ## License
 
 Apache 2.0
+
+## Acknowledgment
+
+Research was sponsored in part by the ARM (Advanced Robotics for Manufacturing) Institute through a grant from the Office of the Secretary of Defense and was accomplished under Agreement Number W911NF-17-3-0004. The views and conclusions contained in this document are those of the authors and should not be interpreted as representing the official policies, either expressed or implied, of the Office of the Secretary of Defense or the U.S. Government. The U.S. Government is authorized to reproduce and distribute reprints for Government purposes notwithstanding any copyright notation herein.
+
+This work was supported in part by the New York State Empire State Development Division of Science, Technology and Innovation (NYSTAR) under contract C160142.
+
+![](docs/figures/arm_logo.jpg) ![](docs/figures/nys_logo.jpg)
