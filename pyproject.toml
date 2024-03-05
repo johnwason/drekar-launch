@@ -3,7 +3,7 @@ requires = ["setuptools", "wheel"]
 
 [project]
 name = "drekar-launch"
-version = "0.1.3"
+version = "0.1.4"
 authors = [
     {name = "John Wason", email = "wason@wasontech.com"}
 ]
