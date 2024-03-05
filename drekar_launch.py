@@ -126,7 +126,8 @@ class DrekarProcess:
                 if not s.restart:
                     break
                 if self._keep_going:
-                    await self.exit_event.wait(s.restart_backoff)
+                    with suppress(asyncio.TimeoutError):
+                        await asyncio.wait_for(self.parent.exit_event.wait(), timeout=s.restart_backoff)
 
     @property
     def process_state(self):
