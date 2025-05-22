@@ -80,7 +80,7 @@ python -m drekar_launch
 `drekar-launch` accepts the following optional command line arguments:
 
 * `--config=`: Specify an alternative configuration file
-* `--config-js=`: Specify an alternative configuration file that uses Jinja2 templates
+* `--config-j2=`: Specify an alternative configuration file that uses Jinja2 templates
 * `--cwd=`: Set the default working directory for processes
 * `--name=`: Override the name of the launch group
 * `--quiet`: Flag to suppress outputting to the terminal
